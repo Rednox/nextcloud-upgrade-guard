@@ -1,0 +1,153 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build \
+            -trimpath \
+            -ldflags="-s -w -X main.version=${{ steps.version.outputs.VERSION }}" \
+            -o nc-guard \
+            ./cmd/nc-guard
+
+      - name: Package zip
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          ARCH="${{ matrix.goarch }}"
+          ZIPNAME="nc-guard_${VERSION}_linux_${ARCH}.zip"
+
+          mkdir -p pkg
+          cp nc-guard pkg/nc-guard
+          cp scripts/preupgrade.sh pkg/preupgrade.sh
+          cp examples/policy.strict-security.yaml pkg/policy.strict-security.yaml
+          cp docs/RELEASE-INSTALL.md pkg/RELEASE-INSTALL.md
+          chmod +x pkg/nc-guard pkg/preupgrade.sh
+
+          cd pkg
+          zip -r "../${ZIPNAME}" .
+          cd ..
+
+          sha256sum "${ZIPNAME}" > "${ZIPNAME}.sha256"
+          echo "ZIPNAME=${ZIPNAME}" >> "$GITHUB_OUTPUT"
+        id: pkg
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.ZIPNAME }}
+          path: ${{ steps.pkg.outputs.ZIPNAME }}
+
+      - name: Upload sha256 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.ZIPNAME }}.sha256
+          path: ${{ steps.pkg.outputs.ZIPNAME }}.sha256
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Collect artifacts and generate SHA256SUMS
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          mkdir -p release
+
+          find dist/ -name "*.zip" -exec cp {} release/ \;
+          find dist/ -name "*.zip.sha256" -exec cp {} release/ \;
+
+          cd release
+          cat *.sha256 > SHA256SUMS
+          rm -f *.sha256
+
+      - name: Generate release notes header
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          cat <<'EOF' > notes_header.md
+          ## Install
+
+          Download the zip for your architecture, verify the checksum, and follow `RELEASE-INSTALL.md` inside the zip.
+
+          ```bash
+          # Example for amd64
+          sha256sum -c SHA256SUMS
+          unzip nc-guard_VERSION_linux_amd64.zip -d nc-guard-release
+          sudo install -m 0755 nc-guard-release/nc-guard /usr/local/bin/nc-guard
+          ```
+
+          See the [README](https://github.com/${{ github.repository }}#install-from-release-zip) for full operator instructions.
+
+          ## Artifacts
+
+          | File | Description |
+          |------|-------------|
+          | `nc-guard_VERSION_linux_amd64.zip` | Linux binary + scripts (x86-64) |
+          | `nc-guard_VERSION_linux_arm64.zip` | Linux binary + scripts (ARM64) |
+          | `SHA256SUMS` | SHA-256 checksums for all zips |
+
+          EOF
+          sed -i "s/VERSION/${VERSION}/g" notes_header.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body_path: notes_header.md
+          files: |
+            release/*.zip
+            release/SHA256SUMS
