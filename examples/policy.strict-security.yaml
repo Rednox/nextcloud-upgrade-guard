@@ -1,0 +1,8 @@
+block_on_incompatible: true
+block_on_unknown: true
+critical_apps:
+  - oidc_login
+  - user_saml
+  - twofactor_totp
+  - twofactor_webauthn
+block_on_critical_risk: true

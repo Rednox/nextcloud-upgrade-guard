@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Rednox/nextcloud-upgrade-guard/schemas/report.v1.json",
+  "title": "nc-guard check report",
+  "type": "object",
+  "required": ["target_major", "generated_at", "apps", "summary"],
+  "properties": {
+    "target_major": { "type": "integer", "minimum": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["app_id", "enabled", "status", "reasons", "recommended_action"],
+        "properties": {
+          "app_id": { "type": "string" },
+          "enabled": { "type": "boolean" },
+          "installed_version": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["compatible", "upgradable_to_compatible", "incompatible", "unknown"]
+          },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommended_action": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "enabled", "compatible", "upgradable_to_compatible", "incompatible", "unknown"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "enabled": { "type": "integer", "minimum": 0 },
+        "compatible": { "type": "integer", "minimum": 0 },
+        "upgradable_to_compatible": { "type": "integer", "minimum": 0 },
+        "incompatible": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
