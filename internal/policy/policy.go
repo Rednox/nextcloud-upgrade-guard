@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Rednox/nextcloud-upgrade-guard/internal/engine"
 	"github.com/Rednox/nextcloud-upgrade-guard/internal/types"
 	"gopkg.in/yaml.v3"
 )
@@ -43,7 +44,7 @@ func Parse(content []byte) (Config, error) {
 }
 
 func (PolicyEvaluator) Evaluate(config Config, targetMajor int, results []types.CheckResult) types.GateDecision {
-	summary := summarize(results)
+	summary := engine.SummarizeResults(results)
 	critical := map[string]struct{}{}
 	for _, appID := range config.CriticalApps {
 		if appID != "" {
@@ -95,25 +96,4 @@ func decision(target int, summary types.CheckSummary, code int, reason string, f
 		FailingApps: failing,
 		Summary:     summary,
 	}
-}
-
-func summarize(results []types.CheckResult) types.CheckSummary {
-	summary := types.CheckSummary{}
-	for _, result := range results {
-		summary.Total++
-		if result.Enabled {
-			summary.Enabled++
-		}
-		switch result.Status {
-		case types.StatusCompatible:
-			summary.Compatible++
-		case types.StatusUpgradableToCompatible:
-			summary.UpgradableToCompatible++
-		case types.StatusIncompatible:
-			summary.Incompatible++
-		default:
-			summary.Unknown++
-		}
-	}
-	return summary
 }
