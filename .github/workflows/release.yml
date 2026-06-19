@@ -50,6 +50,7 @@ jobs:
             ./cmd/nc-guard
 
       - name: Package zip
+        id: pkg
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           ARCH="${{ matrix.goarch }}"
@@ -68,7 +69,6 @@ jobs:
 
           sha256sum "${ZIPNAME}" > "${ZIPNAME}.sha256"
           echo "ZIPNAME=${ZIPNAME}" >> "$GITHUB_OUTPUT"
-        id: pkg
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
@@ -118,17 +118,17 @@ jobs:
         id: notes
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          cat <<'EOF' > notes_header.md
+          cat > notes_header.md << EOF
           ## Install
 
-          Download the zip for your architecture, verify the checksum, and follow `RELEASE-INSTALL.md` inside the zip.
+          Download the zip for your architecture, verify the checksum, and follow \`RELEASE-INSTALL.md\` inside the zip.
 
-          ```bash
+          \`\`\`bash
           # Example for amd64
           sha256sum -c SHA256SUMS
-          unzip nc-guard_VERSION_linux_amd64.zip -d nc-guard-release
+          unzip nc-guard_${VERSION}_linux_amd64.zip -d nc-guard-release
           sudo install -m 0755 nc-guard-release/nc-guard /usr/local/bin/nc-guard
-          ```
+          \`\`\`
 
           See the [README](https://github.com/${{ github.repository }}#install-from-release-zip) for full operator instructions.
 
@@ -136,12 +136,11 @@ jobs:
 
           | File | Description |
           |------|-------------|
-          | `nc-guard_VERSION_linux_amd64.zip` | Linux binary + scripts (x86-64) |
-          | `nc-guard_VERSION_linux_arm64.zip` | Linux binary + scripts (ARM64) |
-          | `SHA256SUMS` | SHA-256 checksums for all zips |
+          | \`nc-guard_${VERSION}_linux_amd64.zip\` | Linux binary + scripts (x86-64) |
+          | \`nc-guard_${VERSION}_linux_arm64.zip\` | Linux binary + scripts (ARM64) |
+          | \`SHA256SUMS\` | SHA-256 checksums for all zips |
 
           EOF
-          sed -i "s/VERSION/${VERSION}/g" notes_header.md
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
