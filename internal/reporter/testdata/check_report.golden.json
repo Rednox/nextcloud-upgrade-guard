@@ -1,0 +1,33 @@
+{
+  "target_major": 35,
+  "generated_at": "2026-01-02T03:04:05Z",
+  "apps": [
+    {
+      "app_id": "calendar",
+      "enabled": true,
+      "installed_version": "34.2.1",
+      "status": "upgradable_to_compatible",
+      "reasons": [
+        "installed major suggests upgrade path may reach compatibility"
+      ],
+      "recommended_action": "update app before core upgrade"
+    },
+    {
+      "app_id": "oidc_login",
+      "enabled": true,
+      "status": "unknown",
+      "reasons": [
+        "installed version unavailable from local metadata"
+      ],
+      "recommended_action": "verify app compatibility manually"
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "enabled": 2,
+    "compatible": 0,
+    "upgradable_to_compatible": 1,
+    "incompatible": 0,
+    "unknown": 1
+  }
+}
